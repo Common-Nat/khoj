@@ -398,11 +398,11 @@ class OpenAIOperatorAgent(OperatorAgent):
 
     def get_tools(self, environment_type: EnvironmentType, current_state: EnvState) -> list[dict]:
         """Return the tools available for the OpenAI operator."""
-        if environment_type == EnvironmentType.COMPUTER:
-            # TODO: Get OS info from the environment
-            # For now, assume Linux as the environment OS
-            environment_os = "linux"
-            # environment = "mac" if platform.system() == "Darwin" else "windows" if platform.system() == "Windows" else "linux"
+        # Get OS info from the environment state, with sensible defaults
+        if current_state.os:
+            environment_os = current_state.os
+        elif environment_type == EnvironmentType.COMPUTER:
+            environment_os = "linux"  # Default for computer environments
         else:
             environment_os = "browser"
 

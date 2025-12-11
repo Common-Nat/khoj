@@ -199,9 +199,12 @@ class AgentAdmin(unfold_admin.ModelAdmin):
     list_display = (
         "id",
         "name",
+        "privacy_level",
+        "managed_by_admin",
+        "officially_approved",
     )
     search_fields = ("id", "name")
-    list_filter = ("privacy_level",)
+    list_filter = ("privacy_level", "managed_by_admin", "officially_approved")
     ordering = ("-created_at",)
 
 
@@ -267,9 +270,11 @@ class AiModelApiAdmin(unfold_admin.ModelAdmin):
     list_display = (
         "id",
         "name",
+        "api_type",
         "api_base_url",
         "api_key",
     )
+    list_filter = ("api_type",)
     search_fields = ("id", "name", "api_base_url", "api_key")
 
 

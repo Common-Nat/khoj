@@ -19,6 +19,7 @@ class EnvState(BaseModel):
     width: int
     screenshot: Optional[str] = None
     url: Optional[str] = None
+    os: Optional[str] = None  # Operating system: "linux", "mac", "windows", or "browser"
 
 
 class EnvStepResult(BaseModel):

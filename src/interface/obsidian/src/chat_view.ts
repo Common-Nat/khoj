@@ -63,6 +63,8 @@ interface Agent {
     name: string;
     slug: string;
     description: string;
+    input_tools?: string[];
+    output_modes?: string[];
 }
 
 export class KhojChatView extends KhojPaneView {
@@ -79,8 +81,8 @@ export class KhojChatView extends KhojPaneView {
     private agents: Agent[] = [];
     private currentAgent: string | null = null;
     private fileAccessMode: 'none' | 'read' | 'write' = 'read'; // Track the current file access mode
-    // TODO: Only show modes available on server and to current agent
-    private chatModes: ChatMode[] = [
+    // All possible chat modes - filtered dynamically based on server and agent availability
+    private static readonly allChatModes: ChatMode[] = [
         { value: "default", label: "Default", iconName: "target", command: "/default" },
         { value: "general", label: "General", iconName: "message-circle", command: "/general" },
         { value: "notes", label: "Notes", iconName: "file-text", command: "/notes" },
@@ -90,6 +92,8 @@ export class KhojChatView extends KhojPaneView {
         { value: "research", label: "Research", iconName: "microscope", command: "/research" },
         { value: "operator", label: "Operator", iconName: "laptop", command: "/operator" }
     ];
+    private chatModes: ChatMode[] = [...KhojChatView.allChatModes];
+    private serverAvailableModes: Set<string> = new Set();
     private editRetryCount: number = 0;  // Track number of retries for edit blocks
     private fileInteractions: FileInteractions;
     private modeDropdown: HTMLElement | null = null;
@@ -219,8 +223,9 @@ export class KhojChatView extends KhojPaneView {
         // Call the parent class's onOpen method first
         await super.onOpen();
 
-        // Fetch available agents
+        // Fetch available agents and chat options
         await this.fetchAgents();
+        await this.fetchChatOptions();
 
         // Populate the agent selector in the header
         const headerAgentSelect = this.contentEl.querySelector('.khoj-header-agent-select') as HTMLSelectElement;
@@ -250,6 +255,8 @@ export class KhojChatView extends KhojPaneView {
             headerAgentSelect.addEventListener('change', (event) => {
                 const select = event.target as HTMLSelectElement;
                 this.currentAgent = select.value || null;
+                // Update available chat modes for the new agent
+                this.updateFilteredChatModes();
             });
         }
 
@@ -2204,6 +2211,68 @@ export class KhojChatView extends KhojPaneView {
         } catch (error) {
             console.error("Error fetching agents:", error);
         }
+    }
+
+    async fetchChatOptions() {
+        try {
+            const response = await fetch(`${this.setting.khojUrl}/api/chat/options`, {
+                headers: {
+                    "Authorization": `Bearer ${this.setting.khojApiKey}`
+                }
+            });
+
+            if (response.ok) {
+                const options = await response.json();
+                // Store the available mode names from the server
+                this.serverAvailableModes = new Set(Object.keys(options));
+                // Update filtered chat modes
+                this.updateFilteredChatModes();
+            } else {
+                console.error("Failed to fetch chat options:", response.statusText);
+            }
+        } catch (error) {
+            console.error("Error fetching chat options:", error);
+        }
+    }
+
+    private updateFilteredChatModes() {
+        // Get current agent's capabilities
+        const currentAgentData = this.agents.find(a => a.slug === this.currentAgent);
+        const agentInputTools = currentAgentData?.input_tools || [];
+        const agentOutputModes = currentAgentData?.output_modes || [];
+
+        // Filter modes based on server availability and agent capabilities
+        this.chatModes = KhojChatView.allChatModes.filter(mode => {
+            // Default mode is always available
+            if (mode.value === "default") return true;
+
+            // Check if mode is available on the server
+            if (this.serverAvailableModes.size > 0 && !this.serverAvailableModes.has(mode.value)) {
+                return false;
+            }
+
+            // If no current agent or agent has no restrictions, allow all server-available modes
+            if (!currentAgentData || (agentInputTools.length === 0 && agentOutputModes.length === 0)) {
+                return true;
+            }
+
+            // Check if mode is allowed by agent's input tools or output modes
+            // Input tools: general, online, notes, webpage, code
+            // Output modes: image, diagram
+            const isInputTool = ["general", "online", "notes", "webpage", "code"].includes(mode.value);
+            const isOutputMode = ["image", "diagram"].includes(mode.value);
+
+            if (isInputTool && agentInputTools.length > 0) {
+                return agentInputTools.includes(mode.value);
+            }
+
+            if (isOutputMode && agentOutputModes.length > 0) {
+                return agentOutputModes.includes(mode.value);
+            }
+
+            // Research and operator modes are not restricted by agent tools
+            return true;
+        });
     }
 
     // Add this new method after the class declaration

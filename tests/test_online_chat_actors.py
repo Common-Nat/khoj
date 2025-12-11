@@ -10,11 +10,11 @@ from khoj.processor.conversation.openai.gpt import converse_openai
 from khoj.processor.conversation.utils import message_to_log
 from khoj.routers.helpers import (
     aget_data_sources_and_output_format,
+    ashould_notify,
     extract_questions,
     generate_online_subqueries,
     infer_webpage_urls,
     schedule_query,
-    should_notify,
 )
 from khoj.utils.helpers import ConversationCommand
 from tests.helpers import generate_chat_history, get_chat_api_key
@@ -730,11 +730,11 @@ def test_infer_task_scheduling_request(
         ),
     ],
 )
-def test_decision_on_when_to_notify_scheduled_task_results(
+async def test_decision_on_when_to_notify_scheduled_task_results(
     chat_client, default_user2, scheduling_query, executing_query, generated_response, expected_should_notify
 ):
     # Act
-    generated_should_notify = should_notify(scheduling_query, executing_query, generated_response, default_user2)
+    generated_should_notify = await ashould_notify(scheduling_query, executing_query, generated_response, default_user2)
 
     # Assert
     assert generated_should_notify == expected_should_notify

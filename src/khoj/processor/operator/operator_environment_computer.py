@@ -145,7 +145,10 @@ class ComputerEnvironment(Environment):
 
     async def get_state(self) -> EnvState:
         screenshot = await self._get_screenshot()
-        return EnvState(screenshot=screenshot, height=self.height, width=self.width)
+        # Detect OS from platform
+        system = platform.system()
+        os_name = "mac" if system == "Darwin" else "windows" if system == "Windows" else "linux"
+        return EnvState(screenshot=screenshot, height=self.height, width=self.width, os=os_name)
 
     async def step(self, action: OperatorAction) -> EnvStepResult:
         output: Optional[Union[str, dict]] = None

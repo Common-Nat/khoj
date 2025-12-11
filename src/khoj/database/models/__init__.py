@@ -204,9 +204,16 @@ class Subscription(DbBaseModel):
 
 
 class AiModelApi(DbBaseModel):
+    class ApiType(models.TextChoices):
+        # Standard provider APIs (OpenAI, Anthropic, Google) - don't support model listing via API
+        STANDARD = "standard"
+        # OpenAI-compatible APIs (Ollama, LM Studio, etc.) - support model listing via /models endpoint
+        OPENAI_COMPATIBLE = "openai_compatible"
+
     name = models.CharField(max_length=200)
     api_key = models.CharField(max_length=4000)
     api_base_url = models.URLField(max_length=200, default=None, blank=True, null=True)
+    api_type = models.CharField(max_length=20, choices=ApiType.choices, default=ApiType.STANDARD)
 
     def __str__(self):
         return self.name
@@ -324,6 +331,7 @@ class Agent(DbBaseModel):
         models.CharField(max_length=200, choices=OutputModeOptions.choices), default=list, null=True, blank=True
     )
     managed_by_admin = models.BooleanField(default=False)
+    officially_approved = models.BooleanField(default=False)  # Approved for public listing, even if not admin-managed
     chat_model = models.ForeignKey(ChatModel, on_delete=models.CASCADE)
     slug = models.CharField(max_length=200, unique=True)
     style_color = models.CharField(max_length=200, choices=StyleColorTypes.choices, default=StyleColorTypes.ORANGE)

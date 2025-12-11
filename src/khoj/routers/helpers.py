@@ -2341,7 +2341,9 @@ class CommonQueryParamsClass:
 CommonQueryParams = Annotated[CommonQueryParamsClass, Depends()]
 
 
-def format_automation_response(scheduling_request: str, executed_query: str, ai_response: str, user: KhojUser) -> bool:
+async def aformat_automation_response(
+    scheduling_request: str, executed_query: str, ai_response: str, user: KhojUser
+) -> str | None:
     """
     Format the AI response to send in automation email to user.
     """
@@ -2356,11 +2358,11 @@ def format_automation_response(scheduling_request: str, executed_query: str, ai_
     )
 
     with timer("Chat actor: Format automation response", logger):
-        raw_response = send_message_to_model_wrapper_sync(automation_format_prompt, user=user)
+        raw_response = await send_message_to_model_wrapper(automation_format_prompt, user=user)
         return raw_response.text if raw_response else None
 
 
-def should_notify(original_query: str, executed_query: str, ai_response: str, user: KhojUser) -> bool:
+async def ashould_notify(original_query: str, executed_query: str, ai_response: str, user: KhojUser) -> bool:
     """
     Decide whether to notify the user of the AI response.
     Default to notifying the user for now.
@@ -2376,8 +2378,7 @@ def should_notify(original_query: str, executed_query: str, ai_response: str, us
 
     with timer("Chat actor: Decide to notify user of automation response", logger):
         try:
-            # TODO Replace with async call so we don't have to maintain a sync version
-            raw_response: ResponseWithThought = send_message_to_model_wrapper_sync(
+            raw_response: ResponseWithThought = await send_message_to_model_wrapper(
                 to_notify_or_not, user=user, response_type="json_object"
             )
             response = json.loads(clean_json(raw_response.text))
@@ -2484,10 +2485,14 @@ def scheduled_chat(
         ai_response = raw_response.text
 
     # Notify user if the AI response is satisfactory
-    if should_notify(
-        original_query=scheduling_request, executed_query=cleaned_query, ai_response=ai_response, user=user
+    if asyncio.run(
+        ashould_notify(
+            original_query=scheduling_request, executed_query=cleaned_query, ai_response=ai_response, user=user
+        )
     ):
-        formatted_response = format_automation_response(scheduling_request, cleaned_query, ai_response, user)
+        formatted_response = asyncio.run(
+            aformat_automation_response(scheduling_request, cleaned_query, ai_response, user)
+        )
 
         if is_resend_enabled():
             send_task_email(user.get_short_name(), user.email, cleaned_query, formatted_response, subject, is_image)

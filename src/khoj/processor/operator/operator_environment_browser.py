@@ -124,10 +124,10 @@ class BrowserEnvironment(Environment):
 
     async def get_state(self) -> EnvState:
         if not self.page or self.page.is_closed():
-            return EnvState(url="about:blank", screenshot=None, height=self.height, width=self.width)
+            return EnvState(url="about:blank", screenshot=None, height=self.height, width=self.width, os="browser")
         url = self.page.url
         screenshot = await self._get_screenshot()
-        return EnvState(url=url, screenshot=screenshot, height=self.height, width=self.width)
+        return EnvState(url=url, screenshot=screenshot, height=self.height, width=self.width, os="browser")
 
     async def step(self, action: OperatorAction) -> EnvStepResult:
         if not self.page or self.page.is_closed():
